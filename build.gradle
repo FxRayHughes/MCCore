@@ -46,6 +46,8 @@ processResources {
 
 shadowJar {
     archiveClassifier = ''
+    // Remove multi-release metadata so Java 8 always resolves the base classes.
+    exclude 'META-INF/versions/**'
     relocate 'com.zaxxer.hikari', 'com.rit.sucy.internal.hikari'
     relocate 'org.sqlite', 'com.rit.sucy.internal.sqlite'
     relocate 'com.fasterxml.jackson', 'com.rit.sucy.internal.jackson'
