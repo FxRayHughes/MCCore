@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.rit.sucy'
-version = '3.0.0'
+version = '3.0.1'
 
 repositories {
     mavenLocal()
@@ -49,7 +49,9 @@ shadowJar {
     // Remove multi-release metadata so Java 8 always resolves the base classes.
     exclude 'META-INF/versions/**'
     relocate 'com.zaxxer.hikari', 'com.rit.sucy.internal.hikari'
-    relocate 'org.sqlite', 'com.rit.sucy.internal.sqlite'
+    // SQLite's native JNI library resolves symbols by the original org.sqlite class names.
+    // Relocating this package changes those names and causes UnsatisfiedLinkError on Java 8,
+    // so keep the driver package intact while isolating the pure-Java libraries below.
     relocate 'com.fasterxml.jackson', 'com.rit.sucy.internal.jackson'
     relocate 'org.yaml.snakeyaml', 'com.rit.sucy.internal.snakeyaml'
 }
