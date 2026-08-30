@@ -32,6 +32,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * <p>Represents and individual entry in a MySQL table</p>
@@ -40,6 +41,7 @@ public class SQLEntry
 {
     private static final DateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final char       SQUOTE = '`';
+    private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
     private SQLDatabase database;
     private SQLTable    table;
@@ -232,8 +234,7 @@ public class SQLEntry
     {
         try
         {
-            if (value != null) value = value.replace('\'', SQUOTE);
-            database.getStatement().execute("UPDATE " + table.getName() + " SET " + key + "='" + value + "' WHERE Name='" + name + "'");
+            update(key, value);
         }
         catch (Exception ex)
         {
@@ -251,7 +252,7 @@ public class SQLEntry
     {
         try
         {
-            database.getStatement().execute("UPDATE " + table.getName() + " SET " + key + "=" + value + " WHERE Name='" + name + "'");
+            update(key, value);
         }
         catch (Exception ex)
         {
@@ -269,7 +270,7 @@ public class SQLEntry
     {
         try
         {
-            database.getStatement().execute("UPDATE " + table.getName() + " SET " + key + "=" + value + " WHERE Name='" + name + "'");
+            update(key, value);
         }
         catch (Exception ex)
         {
@@ -287,7 +288,7 @@ public class SQLEntry
     {
         try
         {
-            database.getStatement().execute("UPDATE " + table.getName() + " SET " + key + "=" + value + " WHERE Name='" + name + "'");
+            update(key, value);
         }
         catch (Exception ex)
         {
@@ -305,7 +306,7 @@ public class SQLEntry
     {
         try
         {
-            database.getStatement().execute("UPDATE " + table.getName() + " SET " + key + "='" + FORMAT.format(value) + "' WHERE Name='" + name + "'");
+            update(key, FORMAT.format(value));
         }
         catch (Exception ex)
         {
@@ -343,5 +344,13 @@ public class SQLEntry
         {
             database.getLogger().severe("Failed to set the map of values for \"" + name + "\" - " + ex.getMessage());
         }
+    }
+
+    /** Validates identifiers before composing the unavoidable dynamic SQL portion. */
+    private void update(String key, Object value) throws Exception
+    {
+        if (!IDENTIFIER.matcher(key).matches()) throw new IllegalArgumentException("Invalid SQL column: " + key);
+        if (!IDENTIFIER.matcher(table.getName()).matches()) throw new IllegalArgumentException("Invalid SQL table");
+        database.executeUpdate("UPDATE " + table.getName() + " SET " + key + "=? WHERE Name=?", value, name);
     }
 }

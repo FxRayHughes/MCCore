@@ -43,6 +43,7 @@ import com.rit.sucy.items.DurabilityListener;
 import com.rit.sucy.player.PlayerUUIDs;
 import com.rit.sucy.reflect.Reflection;
 import com.rit.sucy.scoreboard.*;
+import com.rit.sucy.sql.ConcurrentDatabase;
 import com.rit.sucy.version.VersionManager;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.HandlerList;
@@ -65,6 +66,7 @@ public class MCCore extends JavaPlugin
     private CycleTask   cTask;
     private UpdateTask  uTask;
     private PlayerUUIDs idManager;
+    private ConcurrentDatabase database;
 
     // Settings
     private boolean chatEnabled;
@@ -93,6 +95,8 @@ public class MCCore extends JavaPlugin
 
         Reflection.init();
         BoardManager.init();
+        // Open the local WAL-enabled SQLite store before dependent modules start.
+        database = new ConcurrentDatabase(this);
 
         // Initialize libraries
         if (VersionManager.isUUID())
@@ -143,7 +147,8 @@ public class MCCore extends JavaPlugin
             if (plugin instanceof EconomyPlugin)
             {
                 this.economy = ((EconomyPlugin) plugin).getEconomy();
-                break;
+                // Only the first registered economy provider is used by MCCore.
+                return;
             }
         }
     }
@@ -156,6 +161,7 @@ public class MCCore extends JavaPlugin
     {
         HandlerList.unregisterAll(this);
         if (idManager != null) idManager.save();
+        if (database != null) database.close();
         for (Config config : configs.values())
             config.save();
         configs.clear();
@@ -175,6 +181,16 @@ public class MCCore extends JavaPlugin
     public Economy getEconomy()
     {
         return economy;
+    }
+
+    /**
+     * Gets MCCore's default concurrent SQLite database.
+     *
+     * @return shared database service
+     */
+    public ConcurrentDatabase getDatabase()
+    {
+        return database;
     }
 
     /**

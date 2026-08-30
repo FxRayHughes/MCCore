@@ -187,6 +187,7 @@ public class ConfigSerializer
                     {
                         int index = 1;
                         ConfigurationSection listSection = config.getConfigurationSection(field.getName());
+                        clearIndexedEntries(listSection);
                         for (Object item : (Iterable<?>) field.get(obj))
                         {
                             String path = "item" + index;
@@ -200,7 +201,12 @@ public class ConfigSerializer
                     else if (serializable.map())
                     {
                         ConfigurationSection root = config.getConfigurationSection(field.getName());
-                        HashMap<?, ?> map = (HashMap<?, ?>) serializable;
+                        Object fieldValue = field.get(obj);
+                        if (!(fieldValue instanceof Map<?, ?>))
+                        {
+                            continue;
+                        }
+                        Map<?, ?> map = (Map<?, ?>) fieldValue;
                         for (Map.Entry<?, ?> entry : map.entrySet())
                         {
                             if (!root.contains(entry.getKey().toString()))
@@ -227,6 +233,16 @@ public class ConfigSerializer
             {
                 // If for some reason the field could not be accessed, just move on
             }
+        }
+    }
+
+    /** Removes stale list entries so shrinking a collection cannot retain deleted data. */
+    private static void clearIndexedEntries(ConfigurationSection section)
+    {
+        if (section == null) return;
+        for (String key : section.getKeys(false))
+        {
+            if (key.startsWith("item")) section.set(key, null);
         }
     }
 }

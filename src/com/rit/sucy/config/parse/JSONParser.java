@@ -26,7 +26,6 @@
  */
 package com.rit.sucy.config.parse;
 
-import com.sun.xml.internal.fastinfoset.Encoder;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -35,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Custom parser for JSON that doesn't trim whitespace or newlines
@@ -59,6 +59,7 @@ public class JSONParser
         try
         {
             InputStream read = plugin.getClass().getResourceAsStream("/" + path);
+            if (read == null) return new DataSection();
             StringBuilder builder = new StringBuilder();
             byte[] data = new byte[1024];
             int bytes;
@@ -131,9 +132,11 @@ public class JSONParser
      *
      * @return parsed data
      */
-    public static DataSection parseText(String text)
+    public static synchronized DataSection parseText(String text)
     {
         if (text == null) return new DataSection();
+        text = text.trim();
+        if (text.length() == 0) return new DataSection();
         i = 0;
         return parse(text);
     }
@@ -297,7 +300,7 @@ public class JSONParser
         try
         {
             FileOutputStream out = new FileOutputStream(file);
-            BufferedWriter write = new BufferedWriter(new OutputStreamWriter(out, Encoder.UTF_8));
+            BufferedWriter write = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
 
             save(data, write);
 

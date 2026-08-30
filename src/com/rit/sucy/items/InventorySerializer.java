@@ -43,8 +43,9 @@ import java.util.Map;
  */
 public class InventorySerializer
 {
-    private static String M_SEP = "»";
-    private static String S_SEP = "«";
+    // These uncommon separators keep serialized inventory fields distinct from item text.
+    private static String M_SEP = "禄";
+    private static String S_SEP = "芦";
 
     /**
      * Serializes a chest inventory into a string

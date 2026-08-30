@@ -120,7 +120,26 @@ public class SQLDatabase
      */
     public boolean isConnected()
     {
-        return connection != null;
+        try
+        {
+            return connection != null && !connection.isClosed() && connection.isValid(2);
+        }
+        catch (SQLException ex)
+        {
+            return false;
+        }
+    }
+
+    /** Executes a parameterized update and closes its statement immediately. */
+    public int executeUpdate(String sql, Object... parameters) throws SQLException
+    {
+        if (!isConnected()) throw new SQLException("Database is not connected");
+        try (PreparedStatement statement = connection.prepareStatement(sql))
+        {
+            for (int index = 0; index < parameters.length; index++)
+                statement.setObject(index + 1, parameters[index]);
+            return statement.executeUpdate();
+        }
     }
 
     /**

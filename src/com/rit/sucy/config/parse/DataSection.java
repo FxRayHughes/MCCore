@@ -184,7 +184,8 @@ public class DataSection
             Map<?, ?> map = (Map<?, ?>) value;
             for (Map.Entry<?, ?> k : map.entrySet())
             {
-                section.set(k.getKey().toString(), k.getValue().toString());
+                // Preserve nested maps/lists and numeric values instead of flattening them to strings.
+                section.set(k.getKey().toString(), k.getValue());
             }
         }
         else
@@ -617,7 +618,7 @@ public class DataSection
             return section == null ? fallback : section.getFloat(pieces[1], fallback);
         }
 
-        if (!data.containsKey(key)) return -1;
+        if (!data.containsKey(key)) return fallback;
         Object obj = data.get(key);
         try {
             return (float)NumberParser.parseDouble(obj.toString());

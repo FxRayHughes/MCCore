@@ -67,6 +67,15 @@ public class CommandLog implements CommandSender
         return "MCCore Logger";
     }
 
+    /**
+     * Supplies the Spigot command-sender facade required by newer server APIs.
+     * MCCore does not emit component messages, so the facade is intentionally absent.
+     */
+    public CommandSender.Spigot spigot()
+    {
+        return null;
+    }
+
     @Override
     public boolean isPermissionSet(String s)
     {
