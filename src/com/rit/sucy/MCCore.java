@@ -91,7 +91,9 @@ public class MCCore extends JavaPlugin
                 VersionManager.initialize(msg);
             }
         };
-        getServer().dispatchCommand(new CommandLog(), "version");
+        // Modern command dispatch requires a native sender. Version discovery
+        // must not depend on command permissions, output formatting or aliases.
+        VersionManager.initialize("(MC: " + getServer().getBukkitVersion().split("-")[0] + ")");
 
         Reflection.init();
         BoardManager.init();

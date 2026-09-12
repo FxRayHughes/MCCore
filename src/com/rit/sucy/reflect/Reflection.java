@@ -49,24 +49,49 @@ public class Reflection
 
     private static Field connection;
 
+    /**
+     * Guards against re-running the setup. CRAFT alone cannot serve as the guard:
+     * it is assigned before the Class.forName calls below, so a failure there used
+     * to leave a non-null package prefix cached while the rest stayed null.
+     */
+    private static boolean initialized;
+
     public static void init()
     {
-        if (CRAFT == null)
-        {
-            try
-            {
-                NMS = "net.minecraft.server." + Bukkit.getServer().getClass().getPackage().getName().substring(23) + '.';
-                CRAFT = "org.bukkit.craftbukkit." + Bukkit.getServer().getClass().getPackage().getName().substring(23) + '.';
+        if (initialized) return;
+        initialized = true;
 
-                packetClass = Class.forName(NMS + "Packet");
-                getHandle = Class.forName(CRAFT + "entity.CraftPlayer").getDeclaredMethod("getHandle");
-                connection = Class.forName(NMS + "EntityPlayer").getDeclaredField("playerConnection");
-                sendPacket = Class.forName(NMS + "PlayerConnection").getDeclaredMethod("sendPacket", packetClass);
-            }
-            catch (Exception ex)
+        try
+        {
+            // Paper dropped the version segment from its package name in 1.20.5, so
+            // the legacy "org.bukkit.craftbukkit.<version>" assumption no longer holds.
+            String pkg = Bukkit.getServer().getClass().getPackage().getName();
+            String version = pkg.length() > 23 ? pkg.substring(23) + '.' : null;
+            if (version == null)
             {
-                System.out.println("Failed to set up reflection - is the server using Cauldron/Thermos?");
+                // Modern server: the NMS class names were remapped as well, so there is
+                // nothing usable to reflect against. Callers fall back to the Bukkit API.
+                return;
             }
+
+            NMS = "net.minecraft.server." + version;
+            CRAFT = "org.bukkit.craftbukkit." + version;
+
+            packetClass = Class.forName(NMS + "Packet");
+            getHandle = Class.forName(CRAFT + "entity.CraftPlayer").getDeclaredMethod("getHandle");
+            connection = Class.forName(NMS + "EntityPlayer").getDeclaredField("playerConnection");
+            sendPacket = Class.forName(NMS + "PlayerConnection").getDeclaredMethod("sendPacket", packetClass);
+        }
+        catch (Exception ex)
+        {
+            // Leave every field null so callers take their fallback paths instead of
+            // building bogus class names out of a half-initialized prefix.
+            NMS = null;
+            CRAFT = null;
+            packetClass = null;
+            getHandle = null;
+            connection = null;
+            sendPacket = null;
         }
     }
 
@@ -120,7 +145,10 @@ public class Reflection
      */
     public static Class<?> getNMSClass(String name)
     {
-        return getClass(getNMSPackage() + name);
+        String pkg = getNMSPackage();
+        // Without a resolvable package, concatenating would produce "nullEntityPlayer"
+        // and throw a misleading ClassNotFoundException.
+        return pkg == null ? null : getClass(pkg + name);
     }
 
     /**
@@ -132,7 +160,8 @@ public class Reflection
      */
     public static Class<?> getCraftClass(String name)
     {
-        return getClass(getCraftPackage() + name);
+        String pkg = getCraftPackage();
+        return pkg == null ? null : getClass(pkg + name);
     }
 
     /**
@@ -226,6 +255,9 @@ public class Reflection
      */
     public static void sendPacket(Player player, Object packet)
     {
+        init();
+        // Modern servers leave these null; callers are expected to have a Bukkit-API path.
+        if (getHandle == null || connection == null || sendPacket == null) return;
         try
         {
             Object handle = getHandle.invoke(player);
@@ -246,6 +278,8 @@ public class Reflection
      */
     public static void sendPackets(Player player, List<Object> packets)
     {
+        init();
+        if (getHandle == null || connection == null || sendPacket == null) return;
         try
         {
             Object handle = getHandle.invoke(player);

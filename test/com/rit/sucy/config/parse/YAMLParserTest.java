@@ -56,7 +56,10 @@ public class YAMLParserTest
     }
 
     @Test
-    public void testConfig() { testFile("config"); }
+    public void testConfig() {
+        // Gradle runs from the project root; the shipped fixture lives in config/.
+        testFile("config/config");
+    }
 
     private void testFile(String file)
     {
