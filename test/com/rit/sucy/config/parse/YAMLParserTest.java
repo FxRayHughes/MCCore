@@ -32,6 +32,10 @@ import java.util.List;
 
 public class YAMLParserTest
 {
+
+    /** 解析器按换行切分输入，用例统一用 \n 以免受平台差异影响。 */
+    private static final String NL = "\n";
+
     @Test
     public void testBasicYAML()
     {
@@ -49,10 +53,29 @@ public class YAMLParserTest
         assert subData.getString("quoted").equals("text");
     }
 
-    @Test(expected = IndexOutOfBoundsException.class)
+    @Test
     public void testInvalidYAML()
     {
-        YAMLParser.parseText("key\n  value: 2");
+        // 无冒号的行不是键，跳过即可——原实现在这里抛 IndexOutOfBoundsException，
+        // 而这个解析器被用来读插件的默认配置：一处写法不合预期就会让整个插件
+        // 启动失败。实测触发点是在列表项之间写注释。
+        DataSection data = YAMLParser.parseText("key" + NL + "  value: 2");
+        assert data != null;
+        assert !data.has("key");
+    }
+
+    @Test
+    public void testCommentBetweenListItems()
+    {
+        // 回归用例：列表项之间的注释曾让解析器停在无冒号的行上并越界。
+        DataSection data = YAMLParser.parseText(
+                "section:" + NL + "  list:" + NL + "  - 'a'" + NL
+                        + "  # comment" + NL + "  - 'b'" + NL + "  other: 1");
+        assert data != null;
+        DataSection section = data.getSection("section");
+        assert section != null;
+        assert section.getList("list").size() == 2;
+        assert section.getInt("other") == 1;
     }
 
     @Test

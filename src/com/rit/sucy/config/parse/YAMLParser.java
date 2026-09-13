@@ -189,10 +189,23 @@ public class YAMLParser
             while (i < lines.length && (spaces != indent))
             {
                 i++;
+                // 必须跟着重算缩进，否则循环用的是上一行的 spaces，
+                // 会停在一个缩进并不匹配的行上。
+                if (i < lines.length) spaces = countSpaces(lines[i]);
             }
             if (i == lines.length) return data;
 
-            String key = lines[i].substring(indent, lines[i].indexOf(':'));
+            int separator = lines[i].indexOf(':');
+            if (separator < 0)
+            {
+                // 没有冒号说明这行不是键（列表项之间的注释、续行等都会走到这里）。
+                // 原实现直接 substring(indent, -1)，抛 StringIndexOutOfBounds
+                // 让整个配置加载失败——首次生成默认配置时即会触发。
+                i++;
+                continue;
+            }
+
+            String key = lines[i].substring(indent, separator);
             data.setComments(key, comments);
             comments.clear();
 
@@ -210,11 +223,26 @@ public class YAMLParser
                      && countSpaces(lines[i + 1]) == indent)
             {
                 ArrayList<String> stringList = new ArrayList<String>();
-                while (++i < lines.length
-                       && lines[i].length() > indent
-                       && lines[i].charAt(indent) == '-'
-                       && lines[i].charAt(indent + 1) == ' ')
+                // 注释与空行不终止列表：原实现遇到它们就停，于是注释后面的项被
+                // 静默丢弃。写在列表项之间的注释是常见写法，配置因此少读若干项，
+                // 而且不报错——比抛异常更难发现。
+                while (++i < lines.length)
                 {
+                    int itemSpaces = countSpaces(lines[i]);
+                    // 空行或注释：跳过但保持列表继续
+                    if (lines[i].length() == itemSpaces
+                        || (itemSpaces < lines[i].length() && lines[i].charAt(itemSpaces) == '#'))
+                    {
+                        continue;
+                    }
+                    // 不再是本层的列表项，交回外层处理
+                    if (lines[i].length() <= indent + 1
+                        || lines[i].charAt(indent) != '-'
+                        || lines[i].charAt(indent + 1) != ' ')
+                    {
+                        break;
+                    }
+
                     String str = lines[i].substring(indent + 2);
                     if (str.length() > 0 && str.charAt(0) == quote)
                         while (str.length() > 0 && str.charAt(0) == quote) str = str.substring(1, str.length() - 1);
