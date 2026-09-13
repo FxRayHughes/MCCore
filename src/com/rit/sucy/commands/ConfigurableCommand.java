@@ -740,7 +740,10 @@ public class ConfigurableCommand extends Command
         config.set(NAME_KEY, name);
         config.set(DESCRIPTION_KEY, this.description);
         config.set(PERMISSION_KEY, this.permission);
-        config.set(ARGS_KEY, args);
+        // Persist the effective value loaded from commands.yml; writing the
+        // constructor default here would silently erase administrator edits
+        // every time the command tree is rebuilt.
+        config.set(ARGS_KEY, this.args);
         config.set(SENDER_KEY, senderType.name());
         config.set(ENABLED_KEY, enabled);
         config.set(COOLDOWN_KEY, cooldown);
